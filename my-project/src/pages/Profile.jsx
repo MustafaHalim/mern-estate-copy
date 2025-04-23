@@ -7,6 +7,7 @@ import {
   deleteUserFailure,
   deleteUserStart,
   deleteUserSuccess,
+  signOutUserStart,
 } from '../redux/user/userSlice';
 
 export default function Profile() {
@@ -30,6 +31,7 @@ export default function Profile() {
     formDataCloudinary.append('image', file);
 
     try {
+      setFilePerc(20); // fake progress
       const response = await fetch('/api/upload/image', {
         method: 'POST',
         body: formDataCloudinary,
@@ -39,7 +41,7 @@ export default function Profile() {
 
       if (response.ok) {
         setFormData({ ...formData, avatar: data.imageUrl });
-        setFilePerc(100); // Set progress to 100% on success
+        setFilePerc(100);
         setFileUploadError(false);
       } else {
         setFileUploadError(true);
@@ -96,6 +98,21 @@ export default function Profile() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      dispatch(signOutUserStart());
+      const res = await fetch('/api/auth/signout');
+      const data = await res.json();
+      if (data.success === false) {
+        dispatch(deleteUserFailure(data.message));
+        return;
+      }
+      dispatch(deleteUserSuccess(data));
+    } catch (error) {
+      dispatch(deleteUserFailure(error.message));
+    }
+  };
+
   return (
     <div className='p-3 max-w-lg mx-auto'>
       <h1 className='text-3xl font-semibold text-center my-7'>Profile</h1>
@@ -116,7 +133,7 @@ export default function Profile() {
         <p className='text-sm self-center'>
           {fileUploadError ? (
             <span className='text-red-700'>
-              Error Image upload
+              Error uploading image
             </span>
           ) : filePerc > 0 && filePerc < 100 ? (
             <span className='text-slate-700'>{`Uploading ${filePerc}%`}</span>
@@ -137,8 +154,8 @@ export default function Profile() {
         <input
           type='email'
           placeholder='email'
-          defaultValue={currentUser.email}
           id='email'
+          defaultValue={currentUser.email}
           className='border p-3 rounded-lg'
           onChange={handleChange}
         />
@@ -163,7 +180,7 @@ export default function Profile() {
         >
           Delete account
         </span>
-        <span className='text-red-700 cursor-pointer'>Sign out</span>
+        <span onClick={handleSignOut} className='text-red-700 cursor-pointer'>Sign out</span>
       </div>
 
       <p className='text-red-700 mt-5'>{error ? error : ''}</p>

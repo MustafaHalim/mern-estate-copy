@@ -1,6 +1,4 @@
 import { useState } from 'react';
-// تم حذف استيرادات Firebase Storage
-import { app } from '../firebase'; // ممكن تحتاج ده لو بتستخدم Firebase لحاجات تانية
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,63 +30,55 @@ export default function CreateListing() {
     if (files.length > 0 && files.length + formData.imageUrls.length < 7) {
       setUploading(true);
       setImageUploadError(false);
-      const urls = await uploadImagesToCloudinary(files); // استبدال Promise.all
-      if (urls) {
-        setFormData({
-          ...formData,
-          imageUrls: formData.imageUrls.concat(urls),
-        });
-        setImageUploadError(false);
-        setUploading(false);
-      } else {
-        setImageUploadError('Image upload failed');
-        setUploading(false);
+      const urls = [];
+      for (const file of files) {
+        const url = await storeImage(file);
+        if (url) {
+          urls.push(url);
+        } else {
+          setImageUploadError('Image upload failed (2 mb max per image)');
+          setUploading(false);
+          return;
+        }
       }
+      setFormData({
+        ...formData,
+        imageUrls: formData.imageUrls.concat(urls),
+      });
+      setImageUploadError(false);
+      setUploading(false);
     } else {
       setImageUploadError('You can only upload 6 images per listing');
       setUploading(false);
     }
   };
 
-  const uploadImagesToCloudinary = async (images) => {
-    const cloudName = 'dbzsledh2'; // استبدل باسم Cloudinary بتاعك
-    const uploadPreset = 'listing_uploads'; // اسم الـ Unsigned Upload Preset بتاعك
-    const urls = [];
+  const storeImage = async (file) => {
+    const cloudName = 'dbzsledh2';
+    const uploadPreset = 'listing_uploads';
 
-    for (const file of images) {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', uploadPreset);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
 
-      try {
-        const response = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-          {
-            method: 'POST',
-            body: formData,
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          urls.push(data.secure_url);
-        } else {
-          console.error('Failed to upload to Cloudinary:', response);
-          return null;
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
         }
-      } catch (error) {
-        console.error('Error uploading to Cloudinary:', error);
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return data.secure_url;
+      } else {
         return null;
       }
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      return null;
     }
-    return urls;
-  };
-
-  // تم استبدال دالة storeImage بدالة uploadImagesToCloudinary اللي بترفع كذا صورة مرة واحدة
-  const storeImage = async (file) => {
-    // دي مش هنستخدمها بشكل مباشر دلوقتي لأننا بنرفع الصور كلها مرة واحدة
-    // في دالة uploadImagesToCloudinary
-    return null;
   };
 
   const handleRemoveImage = (index) => {
@@ -159,6 +149,7 @@ export default function CreateListing() {
       setLoading(false);
     }
   };
+
   return (
     <main className='p-3 max-w-4xl mx-auto'>
       <h1 className='text-3xl font-semibold text-center my-7'>
@@ -287,7 +278,9 @@ export default function CreateListing() {
               />
               <div className='flex flex-col items-center'>
                 <p>Regular price</p>
-                <span className='text-xs'>($ / month)</span>
+                {formData.type === 'rent' && (
+                  <span className='text-xs'>($ / month)</span>
+                )}
               </div>
             </div>
             {formData.offer && (
@@ -304,7 +297,9 @@ export default function CreateListing() {
                 />
                 <div className='flex flex-col items-center'>
                   <p>Discounted price</p>
-                  <span className='text-xs'>($ / month)</span>
+                  {formData.type === 'rent' && (
+                    <span className='text-xs'>($ / month)</span>
+                  )}
                 </div>
               </div>
             )}

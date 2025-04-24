@@ -1,7 +1,6 @@
 import { useSelector } from 'react-redux';
 import { useRef, useState, useEffect } from 'react';
 // تم حذف استيرادات Firebase Storage
-import { app } from '../firebase'; // ممكن تحتاج ده لو بتستخدم Firebase لحاجات تانية
 import {
   updateUserStart,
   updateUserSuccess,
@@ -13,6 +12,7 @@ import {
 } from '../redux/user/userSlice';
 import { useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
+
 export default function Profile() {
   const fileRef = useRef(null);
   const { currentUser, loading, error } = useSelector((state) => state.user);
@@ -32,8 +32,8 @@ export default function Profile() {
   }, [file]);
 
   const handleFileUpload = async (file) => {
-    const cloudName = 'dbzsledh2'; // استبدل باسم Cloudinary بتاعك
-    const uploadPreset = 'avatar_uploads'; // ممكن تعمل Upload Preset خاص للأفاتار
+    const cloudName = 'dbzsledh2'; // استبدل باسم Cloudinary بتاعك لو مختلف
+    const uploadPreset = 'avatar_uploads'; // استخدم الـ Preset المناسب للأفاتار
 
     const formData = new FormData();
     formData.append('file', file);
@@ -82,7 +82,6 @@ export default function Profile() {
         dispatch(updateUserFailure(data.message));
         return;
       }
-
       dispatch(updateUserSuccess(data));
       setUpdateSuccess(true);
     } catch (error) {
@@ -118,7 +117,7 @@ export default function Profile() {
       }
       dispatch(deleteUserSuccess(data));
     } catch (error) {
-      dispatch(deleteUserFailure(data.message));
+      dispatch(deleteUserFailure(error.message));
     }
   };
 
@@ -131,7 +130,6 @@ export default function Profile() {
         setShowListingsError(true);
         return;
       }
-
       setUserListings(data);
     } catch (error) {
       setShowListingsError(true);
@@ -148,7 +146,6 @@ export default function Profile() {
         console.log(data.message);
         return;
       }
-
       setUserListings((prev) =>
         prev.filter((listing) => listing._id !== listingId)
       );
@@ -277,7 +274,9 @@ export default function Profile() {
                 >
                   Delete
                 </button>
-                <button className='text-green-700 uppercase'>Edit</button>
+                <Link to={`/update-listing/${listing._id}`}>
+                  <button className='text-green-700 uppercase'>Edit</button>
+                </Link>
               </div>
             </div>
           ))}

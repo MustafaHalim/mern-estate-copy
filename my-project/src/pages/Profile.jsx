@@ -33,7 +33,7 @@ export default function Profile() {
 
   const handleFileUpload = async (file) => {
     const cloudName = 'dbzsledh2'; // استبدل باسم Cloudinary بتاعك لو مختلف
-    const uploadPreset = 'avatar_uploads'; // استخدم الـ Preset المناسب للأفاتار
+    const uploadPreset = 'listing_uploads'; // استخدم الـ Preset المناسب للأفاتار
 
     const formData = new FormData();
     formData.append('file', file);

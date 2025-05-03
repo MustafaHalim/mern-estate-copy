@@ -54,7 +54,7 @@ const Home = () => {
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative flex flex-col gap-6 px-4 py-24 max-w-6xl mx-auto text-center bg-gradient-to-r from-blue-950 to-slate-900 rounded-lg shadow-lg">
+      <section className="relative flex flex-col gap-6 px-4 py-24 max-w-full mx-auto text-center bg-gradient-to-r from-blue-950 to-slate-900 rounded-lg shadow-lg">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -73,7 +73,7 @@ const Home = () => {
         </motion.p>
         <Link
           to='/search'
-          className="inline-block mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-full transition"
+          className="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-full transition mx-auto block shadow-lg"
         >
           Let’s get started
         </Link>

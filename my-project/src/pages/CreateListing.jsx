@@ -1,6 +1,34 @@
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
+});
+
+function LocationMarker({ setFormData }) {
+  const [position, setPosition] = useState(null);
+
+  useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+      setFormData(prev => ({
+        ...prev,
+        latitude: e.latlng.lat,
+        longitude: e.latlng.lng,
+      }));
+    },
+  });
+
+  return position === null ? null : <Marker position={position} />;
+}
 
 export default function CreateListing() {
   const { currentUser } = useSelector((state) => state.user);
@@ -19,12 +47,13 @@ export default function CreateListing() {
     offer: false,
     parking: false,
     furnished: false,
+    latitude: null,
+    longitude: null,
   });
   const [imageUploadError, setImageUploadError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
-  console.log(formData);
 
   const handleImageSubmit = async (e) => {
     if (files.length > 0 && files.length + formData.imageUrls.length < 7) {
@@ -41,10 +70,7 @@ export default function CreateListing() {
           return;
         }
       }
-      setFormData({
-        ...formData,
-        imageUrls: formData.imageUrls.concat(urls),
-      });
+      setFormData({ ...formData, imageUrls: formData.imageUrls.concat(urls) });
       setImageUploadError(false);
       setUploading(false);
     } else {
@@ -90,10 +116,7 @@ export default function CreateListing() {
 
   const handleChange = (e) => {
     if (e.target.id === 'sale' || e.target.id === 'rent') {
-      setFormData({
-        ...formData,
-        type: e.target.id,
-      });
+      setFormData({ ...formData, type: e.target.id });
     }
 
     if (
@@ -101,10 +124,7 @@ export default function CreateListing() {
       e.target.id === 'furnished' ||
       e.target.id === 'offer'
     ) {
-      setFormData({
-        ...formData,
-        [e.target.id]: e.target.checked,
-      });
+      setFormData({ ...formData, [e.target.id]: e.target.checked });
     }
 
     if (
@@ -112,15 +132,16 @@ export default function CreateListing() {
       e.target.type === 'text' ||
       e.target.type === 'textarea'
     ) {
-      setFormData({
-        ...formData,
-        [e.target.id]: e.target.value,
-      });
+      setFormData({ ...formData, [e.target.id]: e.target.value });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.latitude || !formData.longitude) {
+      setError('Please select location on the map.');
+      return;
+    }
     try {
       if (formData.imageUrls.length < 1)
         return setError('You must upload at least one image');
@@ -169,7 +190,6 @@ export default function CreateListing() {
             value={formData.name}
           />
           <textarea
-            type='text'
             placeholder='Description'
             className='border p-3 rounded-lg'
             id='description'
@@ -186,58 +206,37 @@ export default function CreateListing() {
             onChange={handleChange}
             value={formData.address}
           />
-          <div className='flex gap-6 flex-wrap'>
-            <div className='flex gap-2'>
-              <input
-                type='checkbox'
-                id='sale'
-                className='w-5'
-                onChange={handleChange}
-                checked={formData.type === 'sale'}
+          {/* Map */}
+          <div className='h-64 w-full'>
+            <p className='text-sm mb-1'>Click on the map to set location:</p>
+            <MapContainer center={[30.033, 31.233]} zoom={6} className='h-full w-full rounded-lg z-0'>
+              <TileLayer
+                url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
               />
-              <span>Sell</span>
-            </div>
-            <div className='flex gap-2'>
-              <input
-                type='checkbox'
-                id='rent'
-                className='w-5'
-                onChange={handleChange}
-                checked={formData.type === 'rent'}
-              />
-              <span>Rent</span>
-            </div>
-            <div className='flex gap-2'>
-              <input
-                type='checkbox'
-                id='parking'
-                className='w-5'
-                onChange={handleChange}
-                checked={formData.parking}
-              />
-              <span>Parking spot</span>
-            </div>
-            <div className='flex gap-2'>
-              <input
-                type='checkbox'
-                id='furnished'
-                className='w-5'
-                onChange={handleChange}
-                checked={formData.furnished}
-              />
-              <span>Furnished</span>
-            </div>
-            <div className='flex gap-2'>
-              <input
-                type='checkbox'
-                id='offer'
-                className='w-5'
-                onChange={handleChange}
-                checked={formData.offer}
-              />
-              <span>Offer</span>
-            </div>
+              <LocationMarker setFormData={setFormData} />
+            </MapContainer>
           </div>
+
+          <div className='flex gap-6 flex-wrap'>
+            {/* Checkboxes */}
+            {['sale', 'rent', 'parking', 'furnished', 'offer'].map((item) => (
+              <div key={item} className='flex gap-2'>
+                <input
+                  type='checkbox'
+                  id={item}
+                  className='w-5'
+                  onChange={handleChange}
+                  checked={
+                    item === 'sale' || item === 'rent'
+                      ? formData.type === item
+                      : formData[item]
+                  }
+                />
+                <span className='capitalize'>{item}</span>
+              </div>
+            ))}
+          </div>
+
           <div className='flex flex-wrap gap-6'>
             <div className='flex items-center gap-2'>
               <input
@@ -305,6 +304,7 @@ export default function CreateListing() {
             )}
           </div>
         </div>
+
         <div className='flex flex-col flex-1 gap-4'>
           <p className='font-semibold'>
             Images:
@@ -341,7 +341,7 @@ export default function CreateListing() {
               >
                 <img
                   src={url}
-                  alt='listing image'
+                  alt='listing'
                   className='w-20 h-20 object-contain rounded-lg'
                 />
                 <button

@@ -86,7 +86,7 @@ export default function Header() {
         <Link to="/" className="flex items-center gap-2">
           <motion.div whileHover={{ scale: 1.08 }} className="flex items-center gap-2">
             <FaCity size={24} className="text-blue-800 drop-shadow" />
-            <h1 className="font-[Lobster] text-2xl sm:text-3xl drop-shadow text-blue-900">
+            <h1 className="font-[Sacramento] text-2xl sm:text-3xl drop-shadow text-blue-900">
               <span>Reality</span>
               <span className="text-slate-950">Hub</span>
             </h1>

@@ -1,34 +1,7 @@
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
-});
-
-function LocationMarker({ setFormData }) {
-  const [position, setPosition] = useState(null);
-
-  useMapEvents({
-    click(e) {
-      setPosition(e.latlng);
-      setFormData(prev => ({
-        ...prev,
-        latitude: e.latlng.lat,
-        longitude: e.latlng.lng,
-      }));
-    },
-  });
-
-  return position === null ? null : <Marker position={position} />;
-}
+import MapSelector from '../components/MapSelector';
 
 export default function CreateListing() {
   const { currentUser } = useSelector((state) => state.user);
@@ -54,6 +27,7 @@ export default function CreateListing() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mapError, setMapError] = useState('');
 
   const handleImageSubmit = async (e) => {
     if (files.length > 0 && files.length + formData.imageUrls.length < 7) {
@@ -136,17 +110,30 @@ export default function CreateListing() {
     }
   };
 
+  const handleLocationSelect = (location) => {
+    setFormData(prev => ({
+      ...prev,
+      latitude: location.lat,
+      longitude: location.lng,
+    }));
+    setMapError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.latitude || !formData.longitude) {
-      setError('Please select location on the map.');
+      setMapError('Please select location on the map');
       return;
     }
     try {
-      if (formData.imageUrls.length < 1)
-        return setError('You must upload at least one image');
-      if (+formData.regularPrice < +formData.discountPrice)
-        return setError('Discount price must be lower than regular price');
+      if (formData.imageUrls.length < 1) {
+        setError('You must upload at least one image');
+        return;
+      }
+      if (+formData.regularPrice < +formData.discountPrice) {
+        setError('Discount price must be lower than regular price');
+        return;
+      }
       setLoading(true);
       setError(false);
       const res = await fetch('/api/listing/create', {
@@ -206,16 +193,14 @@ export default function CreateListing() {
             onChange={handleChange}
             value={formData.address}
           />
-          {/* Map */}
-          <div className='h-64 w-full'>
-            <p className='text-sm mb-1'>Click on the map to set location:</p>
-            <MapContainer center={[30.033, 31.233]} zoom={6} className='h-full w-full rounded-lg z-0'>
-              <TileLayer
-                url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-              />
-              <LocationMarker setFormData={setFormData} />
-            </MapContainer>
-          </div>
+          
+          {/* Map Component */}
+          <MapSelector
+            location={formData.latitude && formData.longitude ? 
+              { lat: formData.latitude, lng: formData.longitude } : null}
+            setLocation={handleLocationSelect}
+            error={mapError}
+          />
 
           <div className='flex gap-6 flex-wrap'>
             {/* Checkboxes */}

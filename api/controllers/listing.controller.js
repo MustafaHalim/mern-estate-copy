@@ -3,7 +3,18 @@ import { errorHandler } from '../utils/error.js';
 
 export const createListing = async (req, res, next) => {
   try {
-    const listing = await Listing.create(req.body);
+    // نفترض ان الإحداثيات جاية ضمن req.body.latitude و req.body.longitude
+    // ممكن تتأكد انهم موجودين قبل إنشاء اللستنج لو حبيت
+    const { latitude, longitude, ...otherData } = req.body;
+
+    // هنا بنضيف الإحداثيات ضمن بيانات الإنشاء
+    const listingData = {
+      ...otherData,
+      latitude,
+      longitude,
+    };
+
+    const listing = await Listing.create(listingData);
     return res.status(201).json(listing);
   } catch (error) {
     next(error);

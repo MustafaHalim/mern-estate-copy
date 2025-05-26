@@ -1,67 +1,80 @@
 import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { motion } from "framer-motion";
+import { FaSearch, FaMapMarkerAlt } from "react-icons/fa";
 
 const NominatimBaseUrl = "https://nominatim.openstreetmap.org/";
 
-export default function MapSelector() {
+export default function MapSelector({ location, setLocation, error }) {
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const mapContainerRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [address, setAddress] = useState("");
   const [zoom, setZoom] = useState(13);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // إنشاء الخريطة مرة واحدة
+  // Initialize map only once
   useEffect(() => {
-    mapRef.current = L.map("map", {
-      center: [30.0444, 31.2357], // القاهرة كموقع افتراضي
-      zoom,
-      zoomControl: false, // نعطل التحكم الافتراضي
-    });
+    if (!mapRef.current && mapContainerRef.current) {
+      mapRef.current = L.map(mapContainerRef.current, {
+        center: [30.0444, 31.2357], // Default to Cairo
+        zoom,
+        zoomControl: false,
+      });
 
-    // إضافة طبقة الخريطة
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(mapRef.current);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(mapRef.current);
 
-    // إضافة أزرار تكبير وتصغير مخصصة
-    const zoomControl = L.control.zoom({ position: "topright" });
-    zoomControl.addTo(mapRef.current);
+      // Custom zoom control
+      const zoomControl = L.control.zoom({ position: "topright" });
+      zoomControl.addTo(mapRef.current);
 
-    // إضافة زر تحديد الموقع
-    const locateControl = L.control({ position: "topright" });
-    locateControl.onAdd = function () {
-      const btn = L.DomUtil.create("button", "locate-btn");
-      btn.innerHTML = "📍";
-      btn.title = "Locate Me";
+      // Location control
+      const locateControl = L.control({ position: "topright" });
+      locateControl.onAdd = function () {
+        const btn = L.DomUtil.create("button", "locate-btn");
+        btn.innerHTML = "📍";
+        btn.title = "Locate Me";
+        btn.className = "bg-white p-2 rounded-lg shadow-md hover:bg-gray-50 transition";
 
-      btn.onclick = () => {
-        mapRef.current.locate({ setView: true, maxZoom: 16 });
+        btn.onclick = () => {
+          mapRef.current.locate({ setView: true, maxZoom: 16 });
+        };
+
+        return btn;
       };
+      locateControl.addTo(mapRef.current);
 
-      return btn;
-    };
-    locateControl.addTo(mapRef.current);
+      // Handle location found
+      mapRef.current.on("locationfound", (e) => {
+        updateMarker(e.latitude, e.longitude);
+      });
 
-    // عندما يعثر على الموقع، ضع ماركر
-    mapRef.current.on("locationfound", (e) => {
-      updateMarker(e.latitude, e.longitude);
-    });
+      // Handle map clicks
+      mapRef.current.on("click", (e) => {
+        updateMarker(e.latlng.lat, e.latlng.lng);
+      });
+    }
 
     return () => {
-      mapRef.current.remove();
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
     };
   }, []);
 
-  // تحديث الماركر عند تغيير selectedPosition
+  // Update marker when position changes
   useEffect(() => {
     if (selectedPosition && mapRef.current) {
       if (!markerRef.current) {
-        // إنشاء ماركر draggable
         markerRef.current = L.marker(selectedPosition, { draggable: true }).addTo(
           mapRef.current
         );
@@ -80,48 +93,60 @@ export default function MapSelector() {
     }
   }, [selectedPosition]);
 
-  // دالة البحث في Nominatim
+  // Search location
   const searchLocation = async (query) => {
     if (!query) {
       setSearchResults([]);
       return;
     }
 
-    const url = `${NominatimBaseUrl}search?format=json&q=${encodeURIComponent(
-      query
-    )}&addressdetails=1&limit=5`;
+    setIsSearching(true);
+    try {
+      const url = `${NominatimBaseUrl}search?format=json&q=${encodeURIComponent(
+        query
+      )}&addressdetails=1&limit=5`;
 
-    const response = await fetch(url);
-    const data = await response.json();
+      const response = await fetch(url);
+      const data = await response.json();
 
-    setSearchResults(data);
-  };
-
-  // دالة العنوان العكسي (Reverse Geocoding)
-  const reverseGeocode = async (lat, lon) => {
-    const url = `${NominatimBaseUrl}reverse?format=json&lat=${lat}&lon=${lon}`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data && data.display_name) {
-      setAddress(data.display_name);
-    } else {
-      setAddress("العنوان غير متوفر");
+      setSearchResults(data);
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setIsSearching(false);
     }
   };
 
-  // تحديث الماركر وإحداثياته
+  // Reverse geocode
+  const reverseGeocode = async (lat, lon) => {
+    try {
+      const url = `${NominatimBaseUrl}reverse?format=json&lat=${lat}&lon=${lon}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data && data.display_name) {
+        setAddress(data.display_name);
+        if (setLocation) {
+          setLocation({ lat, lng: lon });
+        }
+      }
+    } catch (error) {
+      console.error("Reverse geocode error:", error);
+    }
+  };
+
+  // Update marker
   const updateMarker = (lat, lng) => {
     setSelectedPosition([lat, lng]);
   };
 
-  // عند كتابة النص في البحث
+  // Handle input change
   const handleInputChange = (e) => {
     setSearchTerm(e.target.value);
     searchLocation(e.target.value);
   };
 
-  // عند اختيار نتيجة البحث
+  // Handle result selection
   const handleSelectResult = (result) => {
     setSelectedPosition([parseFloat(result.lat), parseFloat(result.lon)]);
     setSearchResults([]);
@@ -129,70 +154,68 @@ export default function MapSelector() {
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: 600, margin: "auto" }}>
-      <input
-        type="text"
-        placeholder="ابحث عن مكان..."
-        value={searchTerm}
-        onChange={handleInputChange}
-        style={{
-          width: "100%",
-          padding: "8px 12px",
-          marginBottom: 4,
-          fontSize: 16,
-          boxSizing: "border-box",
-        }}
+    <div className="space-y-4">
+      <div className="relative">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search for a location..."
+            value={searchTerm}
+            onChange={handleInputChange}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+          />
+          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        </div>
+
+        {searchResults.length > 0 && (
+          <motion.ul
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-y-auto"
+          >
+            {searchResults.map((result) => (
+              <li
+                key={result.place_id}
+                onClick={() => handleSelectResult(result)}
+                className="px-4 py-2 hover:bg-gray-50 cursor-pointer transition flex items-center gap-2"
+              >
+                <FaMapMarkerAlt className="text-blue-500" />
+                <span className="text-sm">{result.display_name}</span>
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </div>
+
+      <div 
+        ref={mapContainerRef}
+        className="h-[400px] w-full rounded-lg overflow-hidden shadow-md border border-gray-200"
       />
 
-      {/* قائمة نتائج البحث */}
-      {searchResults.length > 0 && (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            maxHeight: 150,
-            overflowY: "auto",
-            border: "1px solid #ccc",
-            borderRadius: 4,
-            backgroundColor: "white",
-            position: "absolute",
-            width: "calc(100% - 24px)",
-            zIndex: 1000,
-          }}
+      {selectedPosition && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gray-50 p-4 rounded-lg"
         >
-          {searchResults.map((result) => (
-            <li
-              key={result.place_id}
-              onClick={() => handleSelectResult(result)}
-              style={{
-                padding: 8,
-                borderBottom: "1px solid #eee",
-                cursor: "pointer",
-              }}
-            >
-              {result.display_name}
-            </li>
-          ))}
-        </ul>
+          <p className="text-sm text-gray-600">
+            <span className="font-medium">Coordinates:</span>{" "}
+            {selectedPosition[0].toFixed(5)}, {selectedPosition[1].toFixed(5)}
+          </p>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-medium">Address:</span> {address}
+          </p>
+        </motion.div>
       )}
 
-      {/* الخريطة */}
-      <div
-        id="map"
-        style={{ height: 400, width: "100%", marginTop: searchResults.length > 0 ? 160 : 8 }}
-      ></div>
-
-      {/* عرض الإحداثيات والعنوان */}
-      {selectedPosition && (
-        <div style={{ marginTop: 8, fontSize: 14 }}>
-          <p>
-            <b>الإحداثيات:</b> {selectedPosition[0].toFixed(5)} , {selectedPosition[1].toFixed(5)}
-          </p>
-          <p>
-            <b>العنوان:</b> {address}
-          </p>
-        </div>
+      {error && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-red-600 text-sm font-medium"
+        >
+          {error}
+        </motion.p>
       )}
     </div>
   );

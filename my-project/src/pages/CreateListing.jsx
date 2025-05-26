@@ -237,7 +237,7 @@ export default function CreateListing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-sm p-6 space-y-6"
+            className="bg-white rounded-xl shadow-sm p-6 space-y-6 relative"
           >
             <div className="flex items-center gap-2 text-xl font-semibold text-gray-900">
               <FaMapMarkerAlt className="text-blue-600" />
@@ -260,17 +260,18 @@ export default function CreateListing() {
                 />
               </div>
 
-              <div className="relative">
-                <div className="absolute inset-0 bg-white/50 z-10 pointer-events-none rounded-lg" />
-                <MapSelector
-                  location={
-                    formData.latitude && formData.longitude
-                      ? { lat: formData.latitude, lng: formData.longitude }
-                      : null
-                  }
-                  setLocation={handleLocationSelect}
-                  error={mapError}
-                />
+              <div className="relative isolate">
+                <div className="relative z-0">
+                  <MapSelector
+                    location={
+                      formData.latitude && formData.longitude
+                        ? { lat: formData.latitude, lng: formData.longitude }
+                        : null
+                    }
+                    setLocation={handleLocationSelect}
+                    error={mapError}
+                  />
+                </div>
                 {mapError && (
                   <p className="mt-2 text-sm text-red-600">{mapError}</p>
                 )}
@@ -352,6 +353,21 @@ export default function CreateListing() {
                     value={formData.regularPrice}
                   />
                   <span className="text-gray-700 font-medium">Price ($)</span>
+                </div>
+
+                <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-lg">
+                  <input
+                    type="number"
+                    id="size"
+                    min={1}
+                    max={100000}
+                    required
+                    className="w-32 p-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                    onChange={handleChange}
+                    value={formData.size}
+                    placeholder="Area"
+                  />
+                  <span className="text-gray-700 font-medium">Area (m²)</span>
                 </div>
               </div>
 

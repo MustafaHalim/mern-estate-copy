@@ -360,6 +360,22 @@ export default function CreateListing() {
                   <span className="text-gray-700 font-medium">Price ($)</span>
                 </div>
 
+                {formData.offer && (
+                  <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-lg">
+                    <input
+                      type="number"
+                      id="discountPrice"
+                      min={0}
+                      max={10000000}
+                      required
+                      className="w-32 p-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                      onChange={handleChange}
+                      value={formData.discountPrice}
+                    />
+                    <span className="text-gray-700 font-medium">Discount Price ($)</span>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-lg">
                   <input
                     type="number"

@@ -16,6 +16,8 @@ import {
   FaMapMarkerAlt,
   FaParking,
   FaShare,
+  FaTag,
+  FaInfoCircle,
 } from 'react-icons/fa';
 import Contact from '../components/Contact';
 
@@ -99,10 +101,21 @@ export default function Listing() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
+      className="min-h-screen bg-gray-50"
     >
-      {loading && <p className='text-center my-7 text-2xl'>Loading...</p>}
+      {loading && (
+        <div className="flex justify-center items-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
       {error && (
-        <p className='text-center my-7 text-2xl'>Something went wrong!</p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center my-7 text-2xl text-red-600 bg-red-50 p-4 rounded-lg mx-4"
+        >
+          Something went wrong!
+        </motion.div>
       )}
       {listing && !loading && !error && (
         <div>
@@ -111,15 +124,12 @@ export default function Listing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Swiper navigation>
+            <Swiper navigation className="relative">
               {listing.imageUrls.map((url) => (
                 <SwiperSlide key={url}>
                   <div
-                    className='h-[550px]'
-                    style={{
-                      background: `url(${url}) center no-repeat`,
-                      backgroundSize: 'cover',
-                    }}
+                    className="h-[550px] bg-cover bg-center bg-no-repeat"
+                    style={{ backgroundImage: `url(${url})` }}
                   ></div>
                 </SwiperSlide>
               ))}
@@ -130,10 +140,9 @@ export default function Listing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className='fixed top-[13%] right-[3%] z-10 border rounded-full w-12 h-12 flex justify-center items-center bg-slate-100 cursor-pointer'
+            className="fixed top-[13%] right-[3%] z-10"
           >
-            <FaShare
-              className='text-slate-500'
+            <button
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
                 setCopied(true);
@@ -141,7 +150,10 @@ export default function Listing() {
                   setCopied(false);
                 }, 2000);
               }}
-            />
+              className="bg-white p-3 rounded-full shadow-lg hover:bg-gray-50 transition-all duration-300"
+            >
+              <FaShare className="text-slate-500 text-xl" />
+            </button>
           </motion.div>
 
           <AnimatePresence>
@@ -150,7 +162,7 @@ export default function Listing() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                className='fixed top-[23%] right-[5%] z-10 rounded-md bg-slate-100 p-2'
+                className="fixed top-[23%] right-[5%] z-10 bg-white px-4 py-2 rounded-lg shadow-lg"
               >
                 Link copied!
               </motion.p>
@@ -161,116 +173,92 @@ export default function Listing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className='flex flex-col max-w-4xl mx-auto p-3 my-7 gap-4'
+            className="flex flex-col max-w-4xl mx-auto p-3 my-7 gap-4"
           >
-            <p className='text-2xl font-semibold'>
-              {listing.name} - ${' '}
-              {listing.offer
-                ? listing.discountPrice.toLocaleString('en-US')
-                : listing.regularPrice.toLocaleString('en-US')}
-              {listing.type === 'rent' && ' / month'}
-            </p>
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                {listing.name}
+              </h1>
+              
+              <div className="flex items-center gap-2 text-slate-600 mb-4">
+                <FaMapMarkerAlt className="text-green-700" />
+                <span className="text-lg">{listing.address}</span>
+              </div>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className='flex items-center mt-6 gap-2 text-slate-600 text-sm'
-            >
-              <FaMapMarkerAlt className='text-green-700' />
-              {listing.address}
-            </motion.p>
+              <div className="flex flex-wrap gap-4 mb-6">
+                <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full font-semibold">
+                  {listing.type === 'rent' ? 'For Rent' : 'For Sale'}
+                </span>
+                {listing.offer && (
+                  <span className="bg-green-100 text-green-800 px-4 py-2 rounded-full font-semibold">
+                    ${+listing.regularPrice - +listing.discountPrice} OFF
+                  </span>
+                )}
+              </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className='flex gap-4'
-            >
-              <p className='bg-red-900 w-full max-w-[200px] text-white text-center p-1 rounded-md'>
-                {listing.type === 'rent' ? 'For Rent' : 'For Sale'}
-              </p>
-              {listing.offer && (
-                <p className='bg-green-900 w-full max-w-[200px] text-white text-center p-1 rounded-md'>
-                  ${+listing.regularPrice - +listing.discountPrice} OFF
-                </p>
-              )}
-            </motion.div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  ${listing.offer
+                    ? listing.discountPrice.toLocaleString('en-US')
+                    : listing.regularPrice.toLocaleString('en-US')}
+                  {listing.type === 'rent' && ' / month'}
+                </h2>
+              </div>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className='text-slate-800'
-            >
-              <span className='font-semibold text-black'>Description - </span>
-              {listing.description}
-            </motion.p>
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <FaInfoCircle className="text-blue-600" />
+                  Description
+                </h3>
+                <p className="text-gray-700 leading-relaxed">{listing.description}</p>
+              </div>
 
-            <motion.ul
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              className='text-green-900 font-semibold text-sm flex flex-wrap items-center gap-4 sm:gap-6'
-            >
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.8 }}
-                className='flex items-center gap-1 whitespace-nowrap'
-              >
-                <FaBed className='text-lg' />
-                {listing.bedrooms > 1
-                  ? `${listing.bedrooms} beds `
-                  : `${listing.bedrooms} bed `}
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.9 }}
-                className='flex items-center gap-1 whitespace-nowrap'
-              >
-                <FaBath className='text-lg' />
-                {listing.bathrooms > 1
-                  ? `${listing.bathrooms} baths `
-                  : `${listing.bathrooms} bath `}
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 1 }}
-                className='flex items-center gap-1 whitespace-nowrap'
-              >
-                <FaParking className='text-lg' />
-                {listing.parking ? 'Parking spot' : 'No Parking'}
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 1.1 }}
-                className='flex items-center gap-1 whitespace-nowrap'
-              >
-                <FaChair className='text-lg' />
-                {listing.furnished ? 'Furnished' : 'Unfurnished'}
-              </motion.li>
-              {listing.size && (
-                <motion.li
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 1.2 }}
-                  className='flex items-center gap-1 whitespace-nowrap'
-                >
-                  <FaMapMarkedAlt className='text-lg' />
-                  {listing.size} m²
-                </motion.li>
-              )}
-            </motion.ul>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                  <FaBed className="text-2xl text-blue-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">
+                    {listing.bedrooms} {listing.bedrooms > 1 ? 'Beds' : 'Bed'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                  <FaBath className="text-2xl text-blue-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">
+                    {listing.bathrooms} {listing.bathrooms > 1 ? 'Baths' : 'Bath'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                  <FaParking className="text-2xl text-blue-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">
+                    {listing.parking ? 'Parking' : 'No Parking'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                  <FaChair className="text-2xl text-blue-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">
+                    {listing.furnished ? 'Furnished' : 'Unfurnished'}
+                  </p>
+                </div>
+                {listing.size && (
+                  <div className="bg-gray-50 p-4 rounded-lg text-center">
+                    <FaMapMarkedAlt className="text-2xl text-blue-600 mx-auto mb-2" />
+                    <p className="font-semibold text-gray-900">{listing.size} m²</p>
+                  </div>
+                )}
+              </div>
+            </div>
 
-            {/* Map Section */}
             {listing.latitude && listing.longitude && (
-              <div className='mt-6'>
-                <h3 className='text-xl font-semibold mb-4'>Location</h3>
-                <div className='h-[400px] w-full rounded-lg overflow-hidden shadow-md border border-gray-200'>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-white rounded-xl shadow-sm p-6"
+              >
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FaMapMarkerAlt className="text-blue-600" />
+                  Location
+                </h3>
+                <div className="h-[400px] w-full rounded-lg overflow-hidden shadow-md border border-gray-200">
                   <MapContainer
                     center={[listing.latitude, listing.longitude]}
                     zoom={13}
@@ -283,23 +271,24 @@ export default function Listing() {
                     />
                     <Marker position={[listing.latitude, listing.longitude]}>
                       <Popup>
-                        {listing.name}
-                        <br />
-                        {listing.address}
+                        <div className="p-2">
+                          <h4 className="font-semibold">{listing.name}</h4>
+                          <p className="text-sm text-gray-600">{listing.address}</p>
+                        </div>
                       </Popup>
                     </Marker>
                   </MapContainer>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {currentUser && listing.userRef !== currentUser._id && !contact && (
               <motion.button
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.4 }}
+                transition={{ delay: 0.5 }}
                 onClick={() => setContact(true)}
-                className='bg-slate-700 text-white rounded-lg uppercase hover:opacity-95 p-3'
+                className="w-full bg-blue-600 text-white rounded-lg uppercase hover:bg-blue-700 p-4 font-semibold transition-colors duration-300"
               >
                 Contact landlord
               </motion.button>

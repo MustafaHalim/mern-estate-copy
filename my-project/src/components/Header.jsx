@@ -6,6 +6,7 @@ import {
   FaCity,
   FaBars,
   FaTimes,
+  FaEnvelope,
 } from 'react-icons/fa';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -56,6 +57,16 @@ export default function Header() {
         <FaInfoCircle size={16} />
         <li>About</li>
       </Link>
+      {currentUser && (
+        <Link
+          to="/messages"
+          className="flex items-center gap-1 hover:text-yellow-300 transition"
+          onClick={() => setMenuOpen(false)}
+        >
+          <FaEnvelope size={16} />
+          <li>Messages</li>
+        </Link>
+      )}
       <Link to="/profile" onClick={() => setMenuOpen(false)}>
         {currentUser ? (
           <motion.img

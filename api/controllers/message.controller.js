@@ -125,4 +125,89 @@ export const markAsRead = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+export const deleteMessage = async (req, res, next) => {
+  try {
+    const { messageId } = req.params;
+    const { deleteType } = req.body; // "self" or "everyone"
+    const userId = req.user.id;
+    
+    // Find the message
+    const message = await Message.findById(messageId);
+    
+    if (!message) {
+      return next(errorHandler(404, 'Message not found'));
+    }
+    
+    // Check if the user is the sender of the message
+    if (message.senderId !== userId) {
+      return next(errorHandler(403, 'You can only delete messages you sent'));
+    }
+    
+    if (deleteType === 'everyone') {
+      // Delete the message completely
+      await Message.findByIdAndDelete(messageId);
+      
+      // If this was the last message in the conversation, update the last message
+      const conversation = await Conversation.findById(message.conversationId);
+      
+      if (conversation && conversation.lastMessage === message.message) {
+        // Find the new last message
+        const lastMessage = await Message.findOne({ 
+          conversationId: message.conversationId 
+        }).sort({ createdAt: -1 });
+        
+        if (lastMessage) {
+          conversation.lastMessage = lastMessage.message;
+        } else {
+          conversation.lastMessage = '';
+        }
+        
+        await conversation.save();
+      }
+      
+      return res.status(200).json({ success: true, deleted: 'everyone' });
+    } else {
+      // Mark as deleted for this user only (we can add a "deletedFor" array to the message model for this)
+      // For now, we'll just delete it completely as the "deletedFor" array isn't implemented yet
+      await Message.findByIdAndDelete(messageId);
+      
+      return res.status(200).json({ success: true, deleted: 'self' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteConversation = async (req, res, next) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+    
+    // Find the conversation
+    const conversation = await Conversation.findById(conversationId);
+    
+    if (!conversation) {
+      return next(errorHandler(404, 'Conversation not found'));
+    }
+    
+    // Check if the user is part of the conversation
+    if (!conversation.participants.includes(userId)) {
+      return next(errorHandler(403, 'You can only delete conversations you are part of'));
+    }
+    
+    // For now, we'll delete the conversation and all its messages for simplicity
+    // In a more advanced implementation, we could mark it as deleted for the specific user
+    
+    // Delete all messages in the conversation
+    await Message.deleteMany({ conversationId });
+    
+    // Delete the conversation
+    await Conversation.findByIdAndDelete(conversationId);
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
 }; 

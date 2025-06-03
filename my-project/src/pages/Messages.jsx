@@ -38,39 +38,47 @@ export default function Messages() {
     fetchConversations();
   }, [currentUser, navigate]);
   
+  const handleDeleteConversation = (conversationId) => {
+    // Update UI by removing the deleted conversation
+    setConversations(conversations.filter(conv => conv._id !== conversationId));
+  };
+  
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="max-w-4xl mx-auto p-3 py-8"
+      className="min-h-screen bg-[url('/chat-bg-pattern.svg')] bg-repeat"
     >
-      <h1 className="text-3xl font-bold mb-6">Messages</h1>
-      
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading ? (
-          <div className="p-8 flex justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : error ? (
-          <div className="p-6 text-center text-red-500">{error}</div>
-        ) : conversations.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <p className="mb-4">You don't have any messages yet.</p>
-            <p>
-              When you contact a property owner, your conversations will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {conversations.map((conversation) => (
-              <ConversationItem 
-                key={conversation._id} 
-                conversation={conversation} 
-              />
-            ))}
-          </div>
-        )}
+      <div className="max-w-4xl mx-auto p-3 py-8">
+        <h1 className="text-3xl font-bold mb-6">Messages</h1>
+        
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {loading ? (
+            <div className="p-8 flex justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : error ? (
+            <div className="p-6 text-center text-red-500">{error}</div>
+          ) : conversations.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <p className="mb-4">You don't have any messages yet.</p>
+              <p>
+                When you contact a property owner, your conversations will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {conversations.map((conversation) => (
+                <ConversationItem 
+                  key={conversation._id} 
+                  conversation={conversation}
+                  onDelete={handleDeleteConversation}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </motion.div>
   );

@@ -111,7 +111,7 @@ export default function Header() {
         >
           <input
             type="text"
-            placeholder="Search properties..."
+            placeholder="Search by property name or address..."
             className="bg-transparent focus:outline-none w-full text-sm text-gray-800"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -161,7 +161,7 @@ export default function Header() {
               >
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder="Search by name or address..."
                   className="bg-transparent focus:outline-none w-full text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}

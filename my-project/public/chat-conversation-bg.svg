@@ -1,0 +1,21 @@
+<svg width="300" height="300" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Subtle grid pattern -->
+  <defs>
+    <pattern id="microGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f0f4f8" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  
+  <rect width="300" height="300" fill="#f8fafc" opacity="0.3"/>
+  <rect width="300" height="300" fill="url(#microGrid)" opacity="0.4"/>
+  
+  <!-- Soft bubble elements that suggest chat/conversation -->
+  <circle cx="40" cy="60" r="20" fill="#e0f2fe" opacity="0.3"/>
+  <circle cx="260" cy="80" r="25" fill="#dbeafe" opacity="0.2"/>
+  <circle cx="100" cy="240" r="15" fill="#e0f2fe" opacity="0.25"/>
+  <circle cx="220" cy="220" r="18" fill="#dbeafe" opacity="0.2"/>
+  
+  <!-- Subtle speech-bubble like shapes -->
+  <path d="M80,140 Q100,120 120,140 Q140,160 120,180 Q100,160 80,140" fill="#f0f9ff" opacity="0.2"/>
+  <path d="M190,100 Q220,80 240,100 Q260,120 240,140 Q210,120 190,100" fill="#e0f7fa" opacity="0.15"/>
+</svg> 

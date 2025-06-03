@@ -137,7 +137,7 @@ export default function Search() {
             <input
               type='text'
               id='searchTerm'
-              placeholder='Search properties...'
+              placeholder='Search by property name or address...'
               className='border-0 bg-transparent p-2 w-full focus:outline-none'
               value={sidebardata.searchTerm}
               onChange={handleChange}

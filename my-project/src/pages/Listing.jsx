@@ -4,10 +4,11 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import SwiperCore from 'swiper';
 import { useSelector } from 'react-redux';
 import { Navigation } from 'swiper/modules';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'swiper/css/bundle';
 import 'leaflet/dist/leaflet.css';
+import '../styles/map.css';
 import {
   FaBath,
   FaBed,
@@ -29,6 +30,33 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Custom marker icon
+const createCustomIcon = () => {
+  return L.divIcon({
+    className: 'custom-marker-icon',
+    html: `<div class="marker-pin bg-blue-600">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+            </svg>
+           </div>`,
+    iconSize: [30, 42],
+    iconAnchor: [15, 42],
+    popupAnchor: [0, -42],
+  });
+};
+
+// Map Popup content component
+function MapPopupContent({ listing }) {
+  return (
+    <div className="map-popup-content">
+      <div className="map-popup-info">
+        <h3 className="map-popup-title">{listing.name}</h3>
+        <p className="map-popup-address">{listing.address}</p>
+      </div>
+    </div>
+  );
+}
 
 // https://sabe.io/blog/javascript-format-numbers-commas#:~:text=The%20best%20way%20to%20format,format%20the%20number%20with%20commas.
 
@@ -253,31 +281,36 @@ export default function Listing() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
                 className="bg-white rounded-xl shadow-sm p-6"
+                id="map-container"
               >
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <FaMapMarkerAlt className="text-blue-600" />
                   Location
                 </h3>
-                <div className="h-[400px] w-full rounded-lg overflow-hidden shadow-md border border-gray-200">
-                  <MapContainer
-                    center={[listing.latitude, listing.longitude]}
-                    zoom={13}
-                    scrollWheelZoom={false}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <Marker position={[listing.latitude, listing.longitude]}>
-                      <Popup>
-                        <div className="p-2">
-                          <h4 className="font-semibold">{listing.name}</h4>
-                          <p className="text-sm text-gray-600">{listing.address}</p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  </MapContainer>
+                <div className="h-[450px] w-full rounded-lg overflow-hidden shadow-md">
+                  {showMap && (
+                    <MapContainer
+                      center={[listing.latitude, listing.longitude]}
+                      zoom={14}
+                      scrollWheelZoom={true}
+                      className="h-full w-full map-container"
+                      zoomControl={false}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <ZoomControl position="topright" />
+                      <Marker 
+                        position={[listing.latitude, listing.longitude]}
+                        icon={createCustomIcon()}
+                      >
+                        <Popup>
+                          <MapPopupContent listing={listing} />
+                        </Popup>
+                      </Marker>
+                    </MapContainer>
+                  )}
                 </div>
               </motion.div>
             )}

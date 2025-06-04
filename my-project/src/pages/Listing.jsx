@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useParams } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import SwiperCore from 'swiper';
 import { useSelector } from 'react-redux';
 import { Navigation } from 'swiper/modules';
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'swiper/css/bundle';
 import 'leaflet/dist/leaflet.css';
@@ -19,6 +19,9 @@ import {
   FaShare,
   FaTag,
   FaInfoCircle,
+  FaLocationArrow,
+  FaExclamationTriangle,
+  FaSpinner
 } from 'react-icons/fa';
 import Contact from '../components/Contact';
 
@@ -30,6 +33,37 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Map resize helper
+function MapResizer() {
+  const map = useMap();
+  
+  useEffect(() => {
+    // Force resize on map load and on window resize
+    const resizeTimer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    // Add another resize check after a longer delay to catch any layout shifts
+    const secondResizeTimer = setTimeout(() => {
+      map.invalidateSize();
+    }, 500);
+
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimer);
+      clearTimeout(secondResizeTimer);
+    };
+  }, [map]);
+  
+  return null;
+}
 
 // Custom marker icon
 const createCustomIcon = () => {
@@ -45,6 +79,148 @@ const createCustomIcon = () => {
     popupAnchor: [0, -42],
   });
 };
+
+// Location Control Component
+const LocationControl = forwardRef(function LocationControl(props, ref) {
+  const map = useMap();
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+  const userLocationMarkerRef = useRef(null);
+  
+  // Expose the locateMe function to parent through ref
+  useImperativeHandle(ref, () => ({
+    locateMe
+  }));
+  
+  const locateMe = () => {
+    if (!navigator.geolocation) {
+      showLocationError('Geolocation is not supported by your browser');
+      return;
+    }
+    
+    setLocating(true);
+    setLocationError(null);
+    
+    navigator.geolocation.getCurrentPosition(
+      // Success callback
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        map.flyTo([latitude, longitude], 16, {
+          animate: true,
+          duration: 1.5
+        });
+        
+        // Add a pulsing user location marker
+        if (userLocationMarkerRef.current) {
+          userLocationMarkerRef.current.setLatLng([latitude, longitude]);
+        } else {
+          const pulsingIcon = L.divIcon({
+            className: 'user-location-marker',
+            html: '<div class="pulse-circle"></div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          
+          userLocationMarkerRef.current = L.marker([latitude, longitude], {
+            icon: pulsingIcon,
+            zIndexOffset: 1000
+          }).addTo(map);
+        }
+        
+        setLocating(false);
+      },
+      // Error callback
+      (error) => {
+        setLocating(false);
+        
+        let errorMessage;
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Location permission denied. Please enable location services for this site.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Location information is unavailable.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Location request timed out.';
+            break;
+          case error.UNKNOWN_ERROR:
+          default:
+            errorMessage = 'An unknown error occurred.';
+            break;
+        }
+        
+        showLocationError(errorMessage);
+      },
+      // Options
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+  
+  const showLocationError = (message) => {
+    setLocationError(message);
+    setTimeout(() => setLocationError(null), 5000);
+  };
+  
+  return (
+    <div className="location-control-container">
+      <AnimatePresence>
+        {locationError && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg z-[1000] flex items-center gap-2 location-notification error"
+          >
+            <FaExclamationTriangle className="text-red-500 flex-shrink-0" />
+            <span className="text-sm">{locationError}</span>
+            <button 
+              onClick={() => setLocationError(null)}
+              className="ml-2 text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <AnimatePresence>
+        {locating && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-3 rounded-full shadow-lg z-[1000]"
+          >
+            <FaSpinner className="w-6 h-6 text-blue-500 animate-spin" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+// Map Custom Controls
+function MapControls({ onLocateMe }) {
+  return (
+    <div className="leaflet-top leaflet-right">
+      <div className="leaflet-control leaflet-bar custom-map-controls">
+        <button 
+          className="custom-map-control-button" 
+          title="Locate Me"
+          onClick={onLocateMe}
+        >
+          <FaLocationArrow />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // Map Popup content component
 function MapPopupContent({ listing }) {
@@ -68,8 +244,10 @@ export default function Listing() {
   const [copied, setCopied] = useState(false);
   const [contact, setContact] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const mapContainerRef = useRef(null);
   const params = useParams();
   const { currentUser } = useSelector((state) => state.user);
+  const locationControlRef = useRef();
 
   useEffect(() => {
     const fetchListing = async () => {
@@ -85,6 +263,9 @@ export default function Listing() {
         setListing(data);
         setLoading(false);
         setError(false);
+        
+        // Show map immediately after data is loaded
+        setShowMap(true);
       } catch (error) {
         setError(true);
         setLoading(false);
@@ -93,36 +274,32 @@ export default function Listing() {
     fetchListing();
   }, [params.listingId]);
 
-  // Debug coordinates
-  useEffect(() => {
-    if (listing) {
-      console.log('Listing Data:', listing);
-      console.log('Latitude:', listing.latitude);
-      console.log('Longitude:', listing.longitude);
+  // Handle locate me button click
+  const handleLocateMe = () => {
+    if (locationControlRef.current) {
+      locationControlRef.current.locateMe();
     }
-  }, [listing]);
+  };
 
-  // Lazy load map when in viewport
+  // Ensure map container is properly sized
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setShowMap(true);
-            observer.disconnect();
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
+    if (showMap && mapContainerRef.current) {
+      const resizeMapContainer = () => {
+        const mapContainer = mapContainerRef.current;
+        if (mapContainer) {
+          // If needed, you can add logic to adjust height based on viewport
+          mapContainer.style.height = '450px';
+        }
+      };
 
-    const mapContainer = document.getElementById('map-container');
-    if (mapContainer) {
-      observer.observe(mapContainer);
+      resizeMapContainer();
+      window.addEventListener('resize', resizeMapContainer);
+      
+      return () => {
+        window.removeEventListener('resize', resizeMapContainer);
+      };
     }
-
-    return () => observer.disconnect();
-  }, []);
+  }, [showMap]);
 
   return (
     <motion.main
@@ -287,7 +464,16 @@ export default function Listing() {
                   <FaMapMarkerAlt className="text-blue-600" />
                   Location
                 </h3>
-                <div className="h-[450px] w-full rounded-lg overflow-hidden shadow-md">
+                <div 
+                  ref={mapContainerRef}
+                  className="h-[450px] w-full rounded-lg overflow-hidden shadow-md relative listing-map-container"
+                >
+                  {!showMap && (
+                    <div className="absolute inset-0 bg-gray-100 flex items-center justify-center map-loading">
+                      <FaSpinner className="w-8 h-8 text-blue-500 animate-spin" />
+                    </div>
+                  )}
+                  
                   {showMap && (
                     <MapContainer
                       center={[listing.latitude, listing.longitude]}
@@ -295,12 +481,16 @@ export default function Listing() {
                       scrollWheelZoom={true}
                       className="h-full w-full map-container"
                       zoomControl={false}
+                      key={`map-${listing._id}`} // Force recreation when listing changes
                     >
                       <TileLayer
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       />
                       <ZoomControl position="topright" />
+                      <MapControls onLocateMe={handleLocateMe} />
+                      <LocationControl ref={locationControlRef} />
+                      <MapResizer />
                       <Marker 
                         position={[listing.latitude, listing.longitude]}
                         icon={createCustomIcon()}

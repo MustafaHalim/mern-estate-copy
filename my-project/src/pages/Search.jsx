@@ -1,9 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ListingItem from '../components/ListingItem';
-import { FaSearch, FaFilter, FaHome, FaKey, FaTag, FaMapMarkerAlt, FaList, FaMap, FaExpand, FaCompress } from 'react-icons/fa';
+import { FaSearch, FaFilter, FaHome, FaKey, FaTag, FaMapMarkerAlt, FaList, FaMap, FaExpand, FaCompress, FaLocationArrow, FaExclamationTriangle, FaSpinner } from 'react-icons/fa';
 import 'leaflet/dist/leaflet.css';
 import '../styles/map.css';
 import L from 'leaflet';
@@ -32,7 +32,7 @@ const createCustomIcon = (color = 'blue', isHighlighted = false) => {
 };
 
 // Map Custom Controls
-function MapControls({ onFullscreenToggle, isFullscreen }) {
+function MapControls({ onFullscreenToggle, isFullscreen, onLocateMe }) {
   return (
     <div className="leaflet-top leaflet-right">
       <div className="leaflet-control leaflet-bar custom-map-controls">
@@ -43,10 +43,142 @@ function MapControls({ onFullscreenToggle, isFullscreen }) {
         >
           {isFullscreen ? <FaCompress /> : <FaExpand />}
         </button>
+        <button 
+          className="custom-map-control-button" 
+          title="Locate Me"
+          onClick={onLocateMe}
+        >
+          <FaLocationArrow />
+        </button>
       </div>
     </div>
   );
 }
+
+// Location Control Component
+const LocationControl = forwardRef(function LocationControl(props, ref) {
+  const map = useMap();
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+  const userLocationMarkerRef = useRef(null);
+  
+  // Expose the locateMe function to parent through ref
+  useImperativeHandle(ref, () => ({
+    locateMe
+  }));
+  
+  const locateMe = () => {
+    if (!navigator.geolocation) {
+      showLocationError('Geolocation is not supported by your browser');
+      return;
+    }
+    
+    setLocating(true);
+    setLocationError(null);
+    
+    navigator.geolocation.getCurrentPosition(
+      // Success callback
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        map.flyTo([latitude, longitude], 16, {
+          animate: true,
+          duration: 1.5
+        });
+        
+        // Add a pulsing user location marker
+        if (userLocationMarkerRef.current) {
+          userLocationMarkerRef.current.setLatLng([latitude, longitude]);
+        } else {
+          const pulsingIcon = L.divIcon({
+            className: 'user-location-marker',
+            html: '<div class="pulse-circle"></div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          
+          userLocationMarkerRef.current = L.marker([latitude, longitude], {
+            icon: pulsingIcon,
+            zIndexOffset: 1000
+          }).addTo(map);
+        }
+        
+        setLocating(false);
+      },
+      // Error callback
+      (error) => {
+        setLocating(false);
+        
+        let errorMessage;
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Location permission denied. Please enable location services for this site.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Location information is unavailable.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Location request timed out.';
+            break;
+          case error.UNKNOWN_ERROR:
+          default:
+            errorMessage = 'An unknown error occurred.';
+            break;
+        }
+        
+        showLocationError(errorMessage);
+      },
+      // Options
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+  
+  const showLocationError = (message) => {
+    setLocationError(message);
+    setTimeout(() => setLocationError(null), 5000);
+  };
+  
+  return (
+    <div className="location-control-container">
+      <AnimatePresence>
+        {locationError && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg z-[1000] flex items-center gap-2 location-notification error"
+          >
+            <FaExclamationTriangle className="text-red-500 flex-shrink-0" />
+            <span className="text-sm">{locationError}</span>
+            <button 
+              onClick={() => setLocationError(null)}
+              className="ml-2 text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <AnimatePresence>
+        {locating && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-3 rounded-full shadow-lg z-[1000]"
+          >
+            <FaSpinner className="w-6 h-6 text-blue-500 animate-spin" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
 
 // Map bounds setter
 function SetMapBounds({ markers, selectedId }) {
@@ -146,6 +278,8 @@ export default function Search() {
   const [mapFullscreen, setMapFullscreen] = useState(false);
   const mapContainerRef = useRef(null);
   const listingsWithCoordinates = listings.filter(listing => listing.latitude && listing.longitude);
+  const [isLocating, setIsLocating] = useState(false);
+  const locationControlRef = useRef();
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -313,6 +447,14 @@ export default function Search() {
   
   // Determine current view mode considering both viewType and fullscreen state
   const effectiveViewType = mapFullscreen ? 'map' : viewType;
+
+  // Handle locate me button click
+  const handleLocateMe = () => {
+    // Trigger the locate function in the LocationControl component
+    if (locationControlRef.current) {
+      locationControlRef.current.locateMe();
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
@@ -606,8 +748,12 @@ export default function Search() {
                       <MapControls 
                         onFullscreenToggle={toggleMapFullscreen} 
                         isFullscreen={mapFullscreen}
+                        onLocateMe={handleLocateMe}
                       />
                     )}
+
+                    {/* Location control that handles geolocation */}
+                    <LocationControl ref={locationControlRef} />
                     
                     {/* Set bounds based on markers */}
                     {listingsWithCoordinates.length > 0 && (

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { motion } from "framer-motion";
-import { FaSearch, FaMapMarkerAlt, FaSpinner } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaSearch, FaMapMarkerAlt, FaSpinner, FaExclamationTriangle, FaLocationArrow } from "react-icons/fa";
 
 const NominatimBaseUrl = "https://nominatim.openstreetmap.org/";
 
@@ -19,6 +19,7 @@ export default function MapSelector({ location, setLocation, error }) {
   const markerRef = useRef(null);
   const mapContainerRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+  const userLocationMarkerRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -27,6 +28,8 @@ export default function MapSelector({ location, setLocation, error }) {
   const [zoom, setZoom] = useState(13);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+  const [locationFound, setLocationFound] = useState(false);
 
   // Initialize map only once
   useEffect(() => {
@@ -51,31 +54,26 @@ export default function MapSelector({ location, setLocation, error }) {
         // Location control
         const locateControl = L.control({ position: "topright" });
         locateControl.onAdd = function () {
-          const btn = L.DomUtil.create("button", "locate-btn");
-          btn.innerHTML = "📍";
+          const container = L.DomUtil.create("div", "custom-locate-container");
+          const btn = L.DomUtil.create("button", "locate-btn", container);
           btn.title = "Locate Me";
-          btn.className = "bg-white p-2 rounded-lg shadow-md hover:bg-gray-50 transition";
+          
+          // Add Font Awesome icon
+          const icon = document.createElement("i");
+          icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="14" height="14" fill="currentColor">
+            <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/>
+          </svg>`;
+          btn.appendChild(icon);
 
-          btn.onclick = () => {
-            setIsLoading(true);
-            mapRef.current.locate({ setView: true, maxZoom: 16 });
+          btn.onclick = function(e) {
+            L.DomEvent.stopPropagation(e);
+            L.DomEvent.preventDefault(e);
+            locateUser();
           };
 
-          return btn;
+          return container;
         };
         locateControl.addTo(mapRef.current);
-
-        // Handle location found
-        mapRef.current.on("locationfound", (e) => {
-          updateMarker(e.latitude, e.longitude);
-          setIsLoading(false);
-        });
-
-        // Handle location error
-        mapRef.current.on("locationerror", () => {
-          setIsLoading(false);
-          console.error("Location access denied");
-        });
 
         // Handle map clicks
         mapRef.current.on("click", (e) => {
@@ -98,6 +96,96 @@ export default function MapSelector({ location, setLocation, error }) {
       }
     };
   }, []);
+  
+  // Function to locate user
+  const locateUser = () => {
+    if (!navigator.geolocation) {
+      showLocationError("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setIsLoading(true);
+    setLocationError(null);
+    
+    navigator.geolocation.getCurrentPosition(
+      // Success handler
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // Update marker position
+        updateMarker(latitude, longitude);
+        
+        // Add a special user location marker if needed
+        if (userLocationMarkerRef.current) {
+          userLocationMarkerRef.current.setLatLng([latitude, longitude]);
+        } else {
+          // Create a custom HTML element for the pulsing marker
+          const pulsingIcon = L.divIcon({
+            className: 'user-location-marker',
+            html: '<div class="pulse-circle"></div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          
+          userLocationMarkerRef.current = L.marker([latitude, longitude], {
+            icon: pulsingIcon,
+            zIndexOffset: 1000
+          }).addTo(mapRef.current);
+          
+          // Add a highlight animation
+          setTimeout(() => {
+            if (userLocationMarkerRef.current) {
+              userLocationMarkerRef.current.setOpacity(0);
+              setTimeout(() => {
+                if (userLocationMarkerRef.current) {
+                  mapRef.current.removeLayer(userLocationMarkerRef.current);
+                  userLocationMarkerRef.current = null;
+                }
+              }, 2000);
+            }
+          }, 5000);
+        }
+        
+        // Show success message
+        setLocationFound(true);
+        setTimeout(() => setLocationFound(false), 3000);
+        
+        setIsLoading(false);
+      },
+      // Error handler
+      (error) => {
+        setIsLoading(false);
+        
+        let errorMessage;
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location permission denied. Please enable location services for this site.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable. Please try again.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Please try again.";
+            break;
+          default:
+            errorMessage = "An unknown error occurred while trying to access your location.";
+        }
+        
+        showLocationError(errorMessage);
+      },
+      // Options
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+  
+  const showLocationError = (message) => {
+    setLocationError(message);
+    setTimeout(() => setLocationError(null), 5000);
+  };
 
   // Update marker when position changes
   useEffect(() => {
@@ -242,6 +330,40 @@ export default function MapSelector({ location, setLocation, error }) {
             <FaSpinner className="w-8 h-8 text-blue-600 animate-spin" />
           </div>
         )}
+        
+        <AnimatePresence>
+          {locationError && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg z-20 max-w-[90%] location-notification error"
+            >
+              <FaExclamationTriangle className="text-red-500 flex-shrink-0" />
+              <p className="text-sm text-gray-700">{locationError}</p>
+              <button 
+                onClick={() => setLocationError(null)} 
+                className="ml-2 text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <AnimatePresence>
+          {locationFound && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg z-20 location-notification success"
+            >
+              <FaLocationArrow className="text-green-500" />
+              <p className="text-sm text-gray-700">Location found successfully</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {selectedPosition && (

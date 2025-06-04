@@ -20,15 +20,14 @@ export default function SignUp() {
   };
 
   const validateForm = () => {
-    // تحقق من صحة المدخلات
     if (!formData.username || !formData.email || !formData.password) {
-      setError("جميع الحقول مطلوبة");
+      setError("All fields are required");
       return false;
     }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(formData.email)) {
-      setError("البريد الإلكتروني غير صالح");
+      setError("Please enter a valid email address");
       return false;
     }
 
@@ -69,52 +68,85 @@ export default function SignUp() {
   };
 
   return (
-    <div className='p-3 max-w-lg mx-auto'>
-      <h1 className='text-3xl text-center font-semibold my-7'>Sign Up</h1>
-      <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
-        <input
-          type='text'
-          placeholder='Username'
-          className='border p-3 rounded-lg'
-          id='username'
-          name='username'
-          value={formData.username}
-          onChange={handleChange}
-        />
-        <input
-          type='email'
-          placeholder='Email'
-          className='border p-3 rounded-lg'
-          id='email'
-          name='email'
-          value={formData.email}
-          onChange={handleChange}
-        />
-        <input
-          type='password'
-          placeholder='Password'
-          className='border p-3 rounded-lg'
-          id='password'
-          name='password'
-          value={formData.password}
-          onChange={handleChange}
-        />
+    <div className="min-h-screen flex items-center justify-center bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"}}>
+      <div className="absolute inset-0 bg-black opacity-50"></div>
+      
+      <div className="w-full max-w-md p-8 mx-auto bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl shadow-xl z-10">
+        <div className='text-center mb-8'>
+          <h1 className='text-3xl font-bold text-gray-800 mb-2'>Create an Account</h1>
+          <p className='text-gray-600'>Join our real estate community today</p>
+        </div>
+          
+        <form onSubmit={handleSubmit} className='space-y-6'>
+          <div className='space-y-4'>
+            <div>
+              <label htmlFor='username' className='block text-sm font-medium text-gray-700 mb-1'>Username</label>
+              <input
+                type='text'
+                placeholder='Choose a username'
+                className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors'
+                id='username'
+                name='username'
+                value={formData.username}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor='email' className='block text-sm font-medium text-gray-700 mb-1'>Email</label>
+              <input
+                type='email'
+                placeholder='Enter your email'
+                className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors'
+                id='email'
+                name='email'
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor='password' className='block text-sm font-medium text-gray-700 mb-1'>Password</label>
+              <input
+                type='password'
+                placeholder='Create a password'
+                className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors'
+                id='password'
+                name='password'
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
 
-        <button
-          disabled={loading}
-          className='bg-slate-700 text-white p-3 rounded-lg uppercase hover:opacity-95 disabled:opacity-80'
-        >
-          {loading ? 'Loading...' : 'Sign Up'}
-        </button>
-        <OAuth />
-      </form>
-      <div className='flex gap-2 mt-5'>
-        <p>Have an account?</p>
-        <Link to={'/sign-in'}>
-          <span className='text-blue-700'>Sign in</span>
-        </Link>
+          <button
+            disabled={loading}
+            className='w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors disabled:opacity-70 disabled:cursor-not-allowed'
+          >
+            {loading ? 'Creating Account...' : 'Sign Up'}
+          </button>
+          
+          <div className='relative flex items-center justify-center'>
+            <div className='border-t border-gray-300 absolute w-full'></div>
+            <span className='bg-white px-4 text-sm text-gray-500 relative'>Or sign up with</span>
+          </div>
+          
+          <OAuth />
+        </form>
+        
+        <div className='text-center mt-6'>
+          <span className='text-gray-600'>Already have an account? </span>
+          <Link to='/sign-in' className='text-indigo-600 hover:text-indigo-800 font-medium transition-colors'>
+            Sign in
+          </Link>
+        </div>
+        {error && (
+          <div className='bg-red-50 text-red-700 p-3 rounded-lg text-center mt-4'>
+            {error}
+          </div>
+        )}
       </div>
-      {error && <p className='text-red-500 mt-5'>{error}</p>}
     </div>
   );
 }
